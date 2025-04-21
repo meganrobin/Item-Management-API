@@ -6,7 +6,7 @@ Shows how a player checks their inventory, crafts an epic bow, adds an enchantme
 
 In this scenario, player Megan wants to add a bow and then enchant it for an upcoming raid.
 
-1. First, Megan checks their inventory to see what materials she has:
+1. First, Megan checks her inventory to see what materials she has:
 
 GET /players/megan783/inventory
 [
