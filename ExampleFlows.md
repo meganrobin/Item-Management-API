@@ -6,7 +6,7 @@ Shows how a player checks their inventory, crafts an epic bow, adds an enchantme
 
 In this scenario, player Megan wants to add a bow and then enchant it for an upcoming raid.
 
-First, Megan checks their inventory to see what materials she has.
+1. First, Megan checks their inventory to see what materials she has:
 
 GET /players/megan783/inventory
 [
@@ -19,7 +19,7 @@ GET /players/megan783/inventory
         “enchantments”:   []
     }
 ]
-Megan removes the required materials from her inventory
+2. Megan removes the required materials from her inventory:
 
 DELETE /players/megan783/inventory/7863
 
@@ -28,7 +28,7 @@ DELETE /players/megan783/inventory/7863
        “quantity”: “1”
      }
 ]
-      3.  Now Megan wants to add the newly crafted enchanted bow to her inventory 
+3. Now Megan wants to add the newly crafted enchanted bow to her inventory:
 
 POST /players/megan783/inventory/
 
@@ -56,12 +56,12 @@ A game developer is adding items for a spring update that introduces new seasona
 "As a game designer, I want to have a database of all foods, so that I can add new foods that are unique from current food offerings."
 “As a game developer, I want to implement different rarities of items, so that players are motivated to explore other parts of the game and have interactions with other players.”
 
-First, the developer must check that the special spring cherry blossom cake wasn’t already added to the global items database:
+1. First, the developer must check that the special spring cherry blossom cake wasn’t already added to the global items database:
 
 GET /items/9002
 
-	The food wasn’t added yet, so the developer will receive a helpful message informing them that the item with the item_id of 9002 isn’t in the database.
-Since the food item wasn’t added yet, the developer then adds the new special food for a spring event:
+The food wasn’t added yet, so the developer will receive a helpful message informing them that the item with the item_id of 9002 isn’t in the database.
+2. Since the food item wasn’t added yet, the developer then adds the new special food for a spring event:
  
 POST /items
 [
@@ -72,7 +72,7 @@ POST /items
       “rarity”: “legendary”
     }
 ]
-Then, the developer adds a new enchantment to accompany the spring food being added:
+3. Then, the developer adds a new enchantment to accompany the spring food being added:
 
 POST /enchantments
 [
@@ -89,7 +89,7 @@ Flow 3: Game moderator removing bugged items
 A multiplayer game moderator has received complaints about a legendary sword and corresponding enchantment being bugged and overpowered. To ensure gameplay fairness, the moderator will remove the legendary sword and enchantment from the game.
 "As a multiplayer game moderator, I want to reset or remove specific items from the game via the backend if they're bugged, so that I can maintain fair play."
 
-First, the developer gets the sword’s corresponding info to check if any of the metadata is responsible for the bug:
+1. First, the developer gets the sword’s corresponding info to check if any of the metadata is responsible for the bug:
 [
    {
       “item_id”: 1021,
@@ -98,11 +98,11 @@ First, the developer gets the sword’s corresponding info to check if any of th
       “rarity”: “legendary”
    }
 ]
-The metadata is correct, so the developer removes the overpowered legendary sword:
+2. The metadata is correct, so the developer removes the overpowered legendary sword:
 
 DELETE /items/1021
 
-The developer also removes the overpowered enchantment:
+3. The developer also removes the overpowered enchantment:
 
 DELETE /enchantments/4552
 
