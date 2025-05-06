@@ -52,11 +52,50 @@ POST /players/megan783/inventory/3021/enchant
 After this flow, Megan has successfully equipped a new bow and added an enchantment to it.
 
 # Testing results (Repeated for each step of the workflow)
-1. The curl statement called. You can find this in the /docs site for your 
-API under each endpoint. For example, for my site the /catalogs/ endpoint 
-curl call looks like:
+1. 
 curl -X 'GET' \
-    'https://item-management-api-dl6u.onrender.com/players' \
-    -H 'accept: application/json'
-2. The response you received in executing the curl statement
+  'https://item-management-api-dl6u.onrender.com/players/783/inventory' \
+  -H 'accept: application/json'
+Response:
+[
+    {
+        “item_id”: “7863”,
+        “name”: “Wooden sword”,
+        “rarity”: “common”, 
+        “quantity”: 1,
+        “enchantments”: []
+    }
+]
 
+2. 
+curl -X 'DELETE' \
+  'https://item-management-api-dl6u.onrender.com/players/783/inventory/7863' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "quantity": 1
+}'
+Response:
+204	Successful Response
+
+3. 
+curl -X 'POST' \
+  'https://item-management-api-dl6u.onrender.com/players/783/inventory' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "item_id": 3021,
+  "quantity": 1
+}'
+Response:
+204	Successful Response
+4. 
+curl -X 'POST' \
+  'https://item-management-api-dl6u.onrender.com/players/783/inventory/3021/enchant' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "enchantment_id": 1
+}'
+Response:
+204	Successful Response
