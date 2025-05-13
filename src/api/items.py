@@ -36,9 +36,9 @@ def get_item(item_id: int):
         item = connection.execute(
             sqlalchemy.text(
                 """
-                SELECT id as item_id, name, item_type, rarity
+                SELECT item_id, name, item_type, rarity
                 FROM item
-                WHERE id = :item_id
+                WHERE item_id = :item_id
                 """
             ),
             {"item_id": item_id}
@@ -63,8 +63,8 @@ def create_item(item: Item):
         existing = connection.execute(
             sqlalchemy.text(
                 """
-                SELECT id FROM item
-                WHERE id = :item_id
+                SELECT item_id FROM item
+                WHERE item_id = :item_id
                 """
             ),
             {"item_id": item.item_id}
@@ -79,7 +79,7 @@ def create_item(item: Item):
         connection.execute(
             sqlalchemy.text(
                 """
-                INSERT INTO item (id, name, item_type, rarity)
+                INSERT INTO item (item_id, name, item_type, rarity)
                 VALUES (:item_id, :name, :item_type, :rarity)
                 """
             ),
@@ -97,8 +97,8 @@ def delete_item(item_id: int):
         existing = connection.execute(
             sqlalchemy.text(
                 """
-                SELECT id FROM item
-                WHERE id = :item_id
+                SELECT item_id FROM item
+                WHERE item_id = :item_id
                 """
             ),
             {"item_id": item_id}
@@ -134,7 +134,7 @@ def delete_item(item_id: int):
             sqlalchemy.text(
                 """
                 DELETE FROM item
-                WHERE id = :item_id
+                WHERE item_id = :item_id
                 """
             ),
             {"item_id": item_id}
