@@ -90,6 +90,15 @@ def create_item(item: Item):
                 "rarity": item.rarity
             }
         )
+        return {
+        "message": f"Item '{item.name}' with ID {item.item_id} created successfully",
+        "item": {
+            "item_id": item.item_id,
+            "name": item.name,
+            "item_type": item.item_type,
+            "rarity": item.rarity
+        }
+    }
 
 @router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_item(item_id: int):
@@ -139,6 +148,9 @@ def delete_item(item_id: int):
             ),
             {"item_id": item_id}
         )
+        return {
+        "message": f"Item with ID {item_id} deleted successfully"
+    }
 
 @router.post("/enchantments", status_code=status.HTTP_201_CREATED)
 def create_enchantment(enchantment: Enchantment):
@@ -172,6 +184,16 @@ def create_enchantment(enchantment: Enchantment):
                 "effect_description": enchantment.effect_description
             }
         )
+        return {
+        "message": f"Enchantment '{enchantment.name}' with ID {enchantment.enchantment_id} created successfully",
+        "enchantment": {
+            "enchantment_id": enchantment.enchantment_id,
+            "name": enchantment.name,
+            "effect_description": enchantment.effect_description
+        }
+    }
+
+
 
 @router.delete("/enchantments/{enchantment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_enchantment(enchantment_id: int):
@@ -211,3 +233,6 @@ def delete_enchantment(enchantment_id: int):
             ),
             {"enchantment_id": enchantment_id}
         )
+        return {
+        "message": f"Enchantment with ID {enchantment_id} deleted successfully"
+    }
