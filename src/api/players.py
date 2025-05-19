@@ -15,9 +15,9 @@ router = APIRouter(
 )
 
 class ItemType(str, Enum):
-    weapon: "weapon"
-    food: "food"
-    clothing: "clothing"
+    weapon = "weapon"
+    food = "food"
+    clothing = "clothing"
 
 class InventoryItem(BaseModel):
     item_id: int
@@ -33,19 +33,19 @@ def get_inventory(player_id: str):
         result = connection.execute(
             sqlalchemy.text(
                 """
-                SELECT pii.id,
-                i.id AS item_id,
+                SELECT pii.player_id,
+                i.item_id AS item_id,
                 i.name,
                 i.item_type,
                 i.rarity,
                 pii.quantity,
                 COALESCE(array_agg(e.name) FILTER (WHERE e.name IS NOT NULL), '{}') AS enchantments
                 FROM player_inventory_item pii
-                JOIN item i ON pii.item_id = i.id
+                JOIN item i ON pii.item_id = i.item_id
                 LEFT JOIN item_enchantment ie ON ie.player_id = pii.player_id AND ie.item_id = pii.item_id
                 LEFT JOIN enchantment e ON e.enchantment_id = ie.enchantment_id
                 WHERE pii.player_id = :player_id
-                GROUP BY pii.id, i.id, i.name, i.item_type, i.rarity, pii.quantity
+                GROUP BY pii.player_id, i.item_id, i.name, i.item_type, i.rarity, pii.quantity
                 """
             ), 
             {"player_id": player_id}
@@ -66,13 +66,13 @@ def get_inventory(player_id: str):
 class ItemRequest(BaseModel):
     quantity: int = Field(gt=0)
 
-@router.delete("{player_id}/inventory/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{player_id}/inventory/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_item(player_id: str, item_id: int, request: ItemRequest):
     with db.engine.begin() as connection:
         result = connection.execute(
             sqlalchemy.text(
                 """
-                SELECT player_id, quantity
+                SELECT player_id, item_id, quantity
                 FROM player_inventory_item
                 WHERE player_id = :player_id AND item_id = :item_id
                 """
@@ -88,10 +88,10 @@ def delete_item(player_id: str, item_id: int, request: ItemRequest):
                 sqlalchemy.text(
                     """
                     DELETE FROM player_inventory_item
-                    WHERE id = :id
+                    WHERE player_id = :player_id AND item_id = :item_id
                     """
                 ), 
-                {"id": result.id}
+                {"player_id": player_id, "item_id": item_id}
             )
 
         else:
@@ -100,11 +100,12 @@ def delete_item(player_id: str, item_id: int, request: ItemRequest):
                     """
                     UPDATE player_inventory_item 
                     SET quantity = quantity - :quantity
-                    WHERE item_id = :item_id
+                    WHERE player_id = :player_id AND item_id = :item_id
                     """
                 ), 
                 {
-                    "item_id": result.item_id,
+                    "player_id": player_id,
+                    "item_id": item_id,
                     "quantity": request.quantity
                 }
             )
@@ -133,12 +134,13 @@ def add_item(player_id: str, request: AddItemRequest):
                     """
                     UPDATE player_inventory_item
                     SET quantity = quantity + :quantity
-                    WHERE item_id = :item_id AND player_id = :player_id
+                    WHERE player_id = :player_id AND item_id = :item_id
                     """
                 ), 
                 {
                     "quantity": request.quantity,
-                    "item_id": existing.item_id
+                    "player_id": player_id,
+                    "item_id": request.item_id
                 }
             )
         else:
@@ -182,9 +184,9 @@ def enchant_item(player_id: str, item_id: int, request: EnchantRequest):
         enchant_exists = connection.execute(
             sqlalchemy.text(
                 """
-                SELECT 1 
+                SELECT enchantment_id 
                 FROM enchantment 
-                WHERE id = :enchantment_id
+                WHERE enchantment_id = :enchantment_id
                 """
             ),
             {"enchantment_id": request.enchantment_id}
@@ -208,3 +210,43 @@ def enchant_item(player_id: str, item_id: int, request: EnchantRequest):
             }
         )
 
+class CreatePlayerRequest(BaseModel):
+    player_id: str
+    username: str
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+def create_player(request: CreatePlayerRequest):
+    """Create a new player."""
+    with db.engine.begin() as connection:
+        # Check if player already exists
+        existing = connection.execute(
+            sqlalchemy.text(
+                """
+                SELECT player_id FROM player
+                WHERE player_id = :player_id
+                """
+            ),
+            {"player_id": request.player_id}
+        ).first()
+
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Player with ID {request.player_id} already exists"
+            )
+
+        # Create the player
+        connection.execute(
+            sqlalchemy.text(
+                """
+                INSERT INTO player (player_id, username)
+                VALUES (:player_id, :username)
+                """
+            ),
+            {
+                "player_id": request.player_id,
+                "username": request.username
+            }
+        )
+    
+    return {"message": f"Player {request.username} created successfully with ID {request.player_id}"}
