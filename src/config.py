@@ -2,6 +2,8 @@ from dotenv import load_dotenv, find_dotenv
 import os
 from functools import lru_cache
 
+print("DEBUG: POSTGRES_URI =", os.getenv("POSTGRES_URI"))
+
 # Load default first
 load_dotenv(dotenv_path="default.env", override=False)
 

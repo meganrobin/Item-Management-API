@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 import os
 
+print("DEBUG: POSTGRES_URI =", os.getenv("POSTGRES_URI"))
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
