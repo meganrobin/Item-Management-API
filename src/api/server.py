@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.api import players, items
+from src.api import players, items, enchantments
 from starlette.middleware.cors import CORSMiddleware
 
 description = """
@@ -7,7 +7,8 @@ Item Management API helps with managing items in multiplayer games.
 """
 tags_metadata = [
     {"name": "players", "description": "Data associated with a player."},
-    {"name": "items", "description": "Global item and enchantment management."},
+    {"name": "items", "description": "Global item management."},
+    {"name": "enchantments", "description": "Global enchantment management."}
 ]
 
 app = FastAPI(
@@ -33,6 +34,7 @@ app.add_middleware(
 
 app.include_router(players.router)
 app.include_router(items.router)
+app.include_router(enchantments.router)
 
 @app.get("/")
 async def root():

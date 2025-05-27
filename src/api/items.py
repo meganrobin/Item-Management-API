@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from typing import Optional
 from enum import Enum
@@ -20,7 +20,6 @@ class ItemType(str, Enum):
     clothing = "clothing"
 
 class Item(BaseModel):
-    item_id: int
     name: str
     item_type: ItemType
     rarity: str
@@ -30,6 +29,55 @@ class Enchantment(BaseModel):
     name: str
     effect_description: str
 
+class UpdateEnchantmentDescription(BaseModel):
+    effect_description: str = Field(..., min_length=1, max_length=250)
+
+class ItemResponse(BaseModel):
+    message: str
+    item: Item
+
+# Returns all items in the database
+@router.get("/items", response_model=list[Item])
+def get_items(
+    item_type: Optional[ItemType] = Query(None, description="Filter by item type"),
+    rarity: Optional[str] = Query(None, description="Filter by item rarity"),
+):
+    base_query = """
+        SELECT item_id, name, item_type, rarity
+        FROM item
+    """
+    
+    filters = []
+    params = {}
+
+    # Allows for filtering by item_type and rarity
+    if item_type is not None:
+        filters.append("item_type = :item_type")
+        params["item_type"] = item_type.value
+
+    if rarity is not None:
+        filters.append("rarity = :rarity")
+        params["rarity"] = rarity
+
+    if filters:
+        base_query += " WHERE " + " AND ".join(filters)
+    
+    base_query += " ORDER BY item_id"
+
+    with db.engine.begin() as connection:
+        results = connection.execute(sqlalchemy.text(base_query), params).fetchall()
+
+    return [
+        Item(
+            item_id=row.item_id,
+            name=row.name,
+            item_type=row.item_type,
+            rarity=row.rarity
+        )
+        for row in results
+    ]
+
+# Returns a specific item's information such as name, rarity and item_type
 @router.get("/items/{item_id}", response_model=Item)
 def get_item(item_id: int):
     with db.engine.begin() as connection:
@@ -45,10 +93,8 @@ def get_item(item_id: int):
         ).first()
 
         if not item:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"Item with ID {item_id} not found in the database."
-            )
+            raise HTTPException(status_code=404, detail=f"Item with ID {item_id} not found")
+
     
     return Item(
         item_id=item.item_id,
@@ -57,52 +103,62 @@ def get_item(item_id: int):
         rarity=item.rarity
     )
 
-@router.post("/items", status_code=status.HTTP_201_CREATED)
+# Creates a new item
+@router.post("/items", status_code=status.HTTP_201_CREATED, response_model=ItemResponse)
 def create_item(item: Item):
     with db.engine.begin() as connection:
+        # Checks if the item is already in the database
         existing = connection.execute(
             sqlalchemy.text(
                 """
-                SELECT item_id FROM item
-                WHERE item_id = :item_id
+                SELECT name, item_type, rarity FROM item
+                WHERE name = :name AND item_type = :item_type AND rarity = :rarity
                 """
             ),
-            {"item_id": item.item_id}
+            {
+                "name": item.name,
+                "item_type": item.item_type,
+                "rarity": item.rarity
+            }
         ).first()
 
         if existing:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Item with ID {item.item_id} already exists"
+                status_code=409,
+                detail=f"Item with name {item.name}, type {item.item_type.value}, and rarity {item.rarity} already exists"
             )
-
-        connection.execute(
+            
+        result = connection.execute(
             sqlalchemy.text(
                 """
-                INSERT INTO item (item_id, name, item_type, rarity)
-                VALUES (:item_id, :name, :item_type, :rarity)
+                INSERT INTO item (name, item_type, rarity, created_at)
+                VALUES (:name, :item_type, :rarity, CURRENT_TIMESTAMP)
+                RETURNING item_id
                 """
             ),
             {
-                "item_id": item.item_id,
                 "name": item.name,
                 "item_type": item.item_type.value,
                 "rarity": item.rarity
             }
         )
-        return {
-        "message": f"Item '{item.name}' with ID {item.item_id} created successfully",
+        new_item_id = result.scalar()
+
+    return {
+        "message": f"Item '{item.name}' with ID {new_item_id} created successfully",
         "item": {
-            "item_id": item.item_id,
+            "item_id": new_item_id,
             "name": item.name,
             "item_type": item.item_type,
             "rarity": item.rarity
         }
     }
 
-@router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+# Deletes the specified item
+@router.delete("/items/{item_id}", response_model=dict[str, str])
 def delete_item(item_id: int):
     with db.engine.begin() as connection:
+        # Checks if the item is in the database
         existing = connection.execute(
             sqlalchemy.text(
                 """
@@ -114,10 +170,7 @@ def delete_item(item_id: int):
         ).first()
 
         if not existing:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Item with ID {item_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"Item with ID {item_id} not found")
 
         connection.execute(
             sqlalchemy.text(
@@ -133,7 +186,11 @@ def delete_item(item_id: int):
             sqlalchemy.text(
                 """
                 DELETE FROM item_enchantment
-                WHERE item_id = :item_id
+                WHERE player_inventory_item_id IN (
+                    SELECT player_inventory_item_id
+                    FROM player_inventory_item
+                    WHERE item_id = :item_id
+                )
                 """
             ),
             {"item_id": item_id}
@@ -149,90 +206,5 @@ def delete_item(item_id: int):
             {"item_id": item_id}
         )
         return {
-        "message": f"Item with ID {item_id} deleted successfully"
-    }
-
-@router.post("/enchantments", status_code=status.HTTP_201_CREATED)
-def create_enchantment(enchantment: Enchantment):
-    with db.engine.begin() as connection:
-        existing = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT enchantment_id FROM enchantment
-                WHERE enchantment_id = :enchantment_id
-                """
-            ),
-            {"enchantment_id": enchantment.enchantment_id}
-        ).first()
-
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Enchantment with ID {enchantment.enchantment_id} already exists"
-            )
-
-        connection.execute(
-            sqlalchemy.text(
-                """
-                INSERT INTO enchantment (enchantment_id, name, effect_description)
-                VALUES (:enchantment_id, :name, :effect_description)
-                """
-            ),
-            {
-                "enchantment_id": enchantment.enchantment_id,
-                "name": enchantment.name,
-                "effect_description": enchantment.effect_description
-            }
-        )
-        return {
-        "message": f"Enchantment '{enchantment.name}' with ID {enchantment.enchantment_id} created successfully",
-        "enchantment": {
-            "enchantment_id": enchantment.enchantment_id,
-            "name": enchantment.name,
-            "effect_description": enchantment.effect_description
+            "message": f"Item with ID {item_id} deleted successfully"
         }
-    }
-
-
-
-@router.delete("/enchantments/{enchantment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_enchantment(enchantment_id: int):
-    with db.engine.begin() as connection:
-        existing = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT enchantment_id FROM enchantment
-                WHERE enchantment_id = :enchantment_id
-                """
-            ),
-            {"enchantment_id": enchantment_id}
-        ).first()
-
-        if not existing:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Enchantment with ID {enchantment_id} not found"
-            )
-
-        connection.execute(
-            sqlalchemy.text(
-                """
-                DELETE FROM item_enchantment
-                WHERE enchantment_id = :enchantment_id
-                """
-            ),
-            {"enchantment_id": enchantment_id}
-        )
-
-        connection.execute(
-            sqlalchemy.text(
-                """
-                DELETE FROM enchantment
-                WHERE enchantment_id = :enchantment_id
-                """
-            ),
-            {"enchantment_id": enchantment_id}
-        )
-        return {
-        "message": f"Enchantment with ID {enchantment_id} deleted successfully"
-    }

@@ -72,4 +72,35 @@ Request:
     }
 ]
 3.5. Remove global enchantment - /enchantments/{enchantment_id} (DELETE)
+Response:
+{
+    "message": "string",
+    "updated_effect_description": "string"
+}
 
+Complex endpoints
+GET /{player_id}/inventory
+Response:
+{
+  "items": [
+    {
+      "item_id": "integer",
+      "name": "string",
+      "item_type": ItemType,
+      "rarity": "string",
+      "quantity": int,
+      "enchantments": List[str] = []
+    }
+  ],
+  "message": str
+}
+
+POST /{player_id}/inventory/{item_id}/enchant
+Response: 
+{
+    message: "string"
+    item_id: "integer"
+    item_name: "string"
+    enchantment_id: "integer"
+    enchantment_name: "string"
+}

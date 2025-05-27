@@ -1,0 +1,44 @@
+Peer Review comments 
+- adding a created_at or updated_at timestamp column
+    - made changes in the player, item, and enchantment table when creating a new object (players.py, items.py)
+- API only supports creation and deletions of items/enchantments, not updates
+    - updates to items are not relevant since the columns are pretty vague and if changes needed to be made, it makes more sense to create a new item instead
+    - for enchantments it makes more sense to be able to edit its effect_description (items.py)
+- adding endpoints to list all items GET /items and enchantments GET /enchantments
+    - implemented in items.py with GET /items and GET /enchantments
+- setting the name field to be unique
+    - done by updating the tables with a unique constraint
+- changed the player_id, item_id, enchantment_id to autoincrement and into an int in the alembic revisions
+- optional filtering for item_type and rarity is now implemented with GET /items
+- the 201 status code already indicates success so a server status response is not implemented
+- changed player/{player_id}/inventory/{item_id} to patch instead of delete (player.py)
+- added constraint to prevent negative quantities in player_inventory_table
+- added CHECK constraint to rarity and item_types for item table in the alembic revisions
+- current API design does not support retrieving a list of all enchantments for a specific player
+    - not implemented since /players/{player_id}/inventory will tell the player what enchantments are equipped to what item
+    - enchantments are not stored in the player's inventory without being attached to an item
+- unique is added to players usernames and is not allowed to be NULL
+- player_inventory_item_id field created and the affected tables are changed to reflect this (items.py, players.py)
+- most schema columns are changed to ints except enchantment_effects since their purpose is to describe its effects
+- enchantments are purposely separated from the item since this encourages the player to go around the game, therefore there is not a way to enchant an item not in a players_inventory
+- damage isn't accounted for since this project is only for inventory items
+- creating a new players with a username was implemented prior to V3 deadline
+- schema should have a notion of item "slot"
+    - not implememted since it doesn't matter where items are in a player's inventory right now
+    - it is sufficient to be list
+- implemented ability for user to de-enchant an item (players.py)
+    - added a DELETE endpoint /{player_id}/inventory/{item_id}/enchantments
+- In your enchantments table, in addition to an effect_description, it could be nice to include specific numerical stats as well
+    - not implemented as the enchantments increases an items strength by a fixed amount to ensure fairness
+- The first issue I can see is that every item is only allowed to have one enchantment in this current model because item_id is a unique primary key and player_id is also a unique primary key
+    - an item is purposely allowed to only have one enchantment which is why the table is setup like this
+    - to prevent an item from having too many benefits
+- have rarity be a part of the playerInventoryItem table
+    - since rarity is already part of an item, this is not necessary since the rarity can be pulled from a LEFT JOIN
+- putting name under PlayerInventoryItem table would also be good
+    - also not implemented since items are not meant to be customizable, since it would most likely change every game
+- I think each item type should have only certain enchantments associated with it. I think creating an itemTypeEnchantments table that has an item_type and enchantment_id column could be a good way of organizing this data
+    - not implemented since it allows for more player creativity and let them decide how they want to enchant an item
+- Allowing for an ORDER BY argument would be good
+    - implemented in /players/{player_id}/inventory
+- separated enchantments from items.py
