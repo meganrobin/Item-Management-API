@@ -138,7 +138,7 @@ def get_inventory(player_id: int):
 # Allows the player to remove items from their inventory
 @router.patch("/{player_id}/inventory/{item_id}", status_code=status.HTTP_200_OK, response_model=RemoveItemResponse)
 def remove_item_quantity(player_id: int, item_id: int, request: ItemRequest):
-    with db.engine.begin() as connection:
+    with db.engine.begin().execution_options(isolation_level="REPEATABLE READ") as connection:
         # Check if player exists
         check_player_exists(connection, player_id)
             
@@ -161,7 +161,7 @@ def remove_item_quantity(player_id: int, item_id: int, request: ItemRequest):
             )
             
         if result.quantity < request.quantity:
-            raise HTTPException(
+            raise HTTPException( 
                 status_code=status.HTTP_400_BAD_REQUEST, 
                 detail=f"Not enough quantity available. Requested: {request.quantity}, Available: {result.quantity}"
             )
@@ -301,7 +301,7 @@ def add_item(player_id: int, request: AddItemRequest):
 # Allows the player to enchant an item
 @router.post("/{player_id}/inventory/{item_id}/enchant", status_code=status.HTTP_201_CREATED, response_model=EnchantItemResponse)
 def enchant_item(player_id: str, item_id: int, request: EnchantRequest):
-    with db.engine.begin() as connection:
+    with db.engine.begin().execution_options(isolation_level="SERIALIZABLE") as connection:
         # Check if player exists
         check_player_exists(connection, player_id)
             
@@ -442,7 +442,7 @@ def create_player(request: CreatePlayerRequest):
 @router.delete("/{player_id}/inventory/{item_id}/enchantments", status_code=status.HTTP_200_OK, response_model=RemoveEnchantmentsResponse)
 def remove_enchantments(player_id: str, item_id: int):
     """Remove enchantments from a specific item in the player's inventory, keeping the item."""
-    with db.engine.begin() as connection:
+    with db.engine.begin().execution_options(isolation_level="SERIALIZABLE") as connection:
         check_player_exists(connection, player_id)
 
         # Get player_inventory_item_id
