@@ -137,7 +137,6 @@ def generate_fake_data():
             sqlalchemy.text("SELECT player_inventory_item_id FROM player_inventory_item")
         ).fetchall()
         
-        # Add enchantments to about 30% of items
         enchantment_records = []
         for pii_id_row in pii_ids:
             if random.random() < 0.3:  # 30% chance of enchantment
@@ -161,7 +160,6 @@ def generate_fake_data():
         
         print(f"Generated enchantments: {len(enchantment_records)}")
         
-        # Print final statistics
         player_count = conn.execute(sqlalchemy.text("SELECT COUNT(*) FROM player")).scalar()
         item_count = conn.execute(sqlalchemy.text("SELECT COUNT(*) FROM item")).scalar() 
         enchantment_count = conn.execute(sqlalchemy.text("SELECT COUNT(*) FROM enchantment")).scalar()
