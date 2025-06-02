@@ -20,6 +20,12 @@ class ItemType(str, Enum):
     clothing = "clothing"
 
 class Item(BaseModel):
+    item_id: int
+    name: str
+    item_type: ItemType
+    rarity: str
+
+class ItemWithoutID(BaseModel):
     name: str
     item_type: ItemType
     rarity: str
@@ -77,7 +83,7 @@ def get_items(
         for row in results
     ]
 
-# Returns a specific item's information such as name, rarity and item_type
+# Returns a specific item's information such as item_id, name, item_type and rarity
 @router.get("/items/{item_id}", response_model=Item)
 def get_item(item_id: int):
     with db.engine.begin() as connection:
@@ -105,7 +111,7 @@ def get_item(item_id: int):
 
 # Creates a new item
 @router.post("/items", status_code=status.HTTP_201_CREATED, response_model=ItemResponse)
-def create_item(item: Item):
+def create_item(item: ItemWithoutID):
     with db.engine.begin() as connection:
         # Checks if the item is already in the database
         existing = connection.execute(

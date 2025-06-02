@@ -138,84 +138,85 @@ def get_inventory(player_id: int):
 # Allows the player to remove items from their inventory
 @router.patch("/{player_id}/inventory/{item_id}", status_code=status.HTTP_200_OK, response_model=RemoveItemResponse)
 def remove_item_quantity(player_id: int, item_id: int, request: ItemRequest):
-    with db.engine.begin().execution_options(isolation_level="REPEATABLE READ") as connection:
-        # Check if player exists
-        check_player_exists(connection, player_id)
-            
-        # Check if item exists in inventory
-        result = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT player_id, item_id, quantity
-                FROM player_inventory_item
-                WHERE player_id = :player_id AND item_id = :item_id
-                """
-            ), 
-            {"player_id": player_id, "item_id": item_id}
-        ).first()
-            
-        if not result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"Item with ID {item_id} not found in player {player_id}'s inventory"
-            )
-            
-        if result.quantity < request.quantity:
-            raise HTTPException( 
-                status_code=status.HTTP_400_BAD_REQUEST, 
-                detail=f"Not enough quantity available. Requested: {request.quantity}, Available: {result.quantity}"
-            )
-
-        # Get item name for the response message
-        item_name = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT name FROM item WHERE item_id = :item_id
-                """
-            ),
-            {"item_id": item_id}
-        ).scalar()
-
-        # Removes the items from the player's inventory
-        if result.quantity == request.quantity:
-            connection.execute(
+    with db.engine.connect().execution_options(isolation_level="REPEATABLE READ") as connection:
+        with connection.begin():
+            # Check if player exists
+            check_player_exists(connection, player_id)
+                
+            # Check if item exists in inventory
+            result = connection.execute(
                 sqlalchemy.text(
                     """
-                    DELETE FROM player_inventory_item
+                    SELECT player_id, item_id, quantity
+                    FROM player_inventory_item
                     WHERE player_id = :player_id AND item_id = :item_id
                     """
                 ), 
                 {"player_id": player_id, "item_id": item_id}
-            )
-            return RemoveItemResponse(
-                message=f"Removed all {request.quantity} '{item_name}' from player {player_id}'s inventory",
-                item_id=item_id,
-                quantity_removed=request.quantity,
-                remaining=0
-            )
-        else:
-            # Update the item's quantity in the player's inventory
-            new_quantity = result.quantity - request.quantity
-            connection.execute(
+            ).first()
+                
+            if not result:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, 
+                    detail=f"Item with ID {item_id} not found in player {player_id}'s inventory"
+                )
+                
+            if result.quantity < request.quantity:
+                raise HTTPException( 
+                    status_code=status.HTTP_400_BAD_REQUEST, 
+                    detail=f"Not enough quantity available. Requested: {request.quantity}, Available: {result.quantity}"
+                )
+
+            # Get item name for the response message
+            item_name = connection.execute(
                 sqlalchemy.text(
                     """
-                    UPDATE player_inventory_item 
-                    SET quantity = quantity - :quantity
-                    WHERE player_id = :player_id AND item_id = :item_id
+                    SELECT name FROM item WHERE item_id = :item_id
                     """
-                ), 
-                {
-                    "player_id": player_id,
-                    "item_id": item_id,
-                    "quantity": request.quantity
-                }
-            )
-            return RemoveItemResponse(
-                message=f"Removed {request.quantity} '{item_name}' from player {player_id}'s inventory",
-                item_id=item_id,
-                quantity_removed=request.quantity,
-                remaining=new_quantity
-            )
+                ),
+                {"item_id": item_id}
+            ).scalar()
+
+            # Removes the items from the player's inventory
+            if result.quantity == request.quantity:
+                connection.execute(
+                    sqlalchemy.text(
+                        """
+                        DELETE FROM player_inventory_item
+                        WHERE player_id = :player_id AND item_id = :item_id
+                        """
+                    ), 
+                    {"player_id": player_id, "item_id": item_id}
+                )
+                return RemoveItemResponse(
+                    message=f"Removed all {request.quantity} '{item_name}' from player {player_id}'s inventory",
+                    item_id=item_id,
+                    quantity_removed=request.quantity,
+                    remaining=0
+                )
+            else:
+                # Update the item's quantity in the player's inventory
+                new_quantity = result.quantity - request.quantity
+                connection.execute(
+                    sqlalchemy.text(
+                        """
+                        UPDATE player_inventory_item 
+                        SET quantity = quantity - :quantity
+                        WHERE player_id = :player_id AND item_id = :item_id
+                        """
+                    ), 
+                    {
+                        "player_id": player_id,
+                        "item_id": item_id,
+                        "quantity": request.quantity
+                    }
+                )
+                return RemoveItemResponse(
+                    message=f"Removed {request.quantity} '{item_name}' from player {player_id}'s inventory",
+                    item_id=item_id,
+                    quantity_removed=request.quantity,
+                    remaining=new_quantity
+                )
 
 # Allow the player to add an item to their inventory
 @router.post("/{player_id}/inventory", status_code=status.HTTP_201_CREATED, response_model=AddItemResponse)
@@ -301,100 +302,101 @@ def add_item(player_id: int, request: AddItemRequest):
 # Allows the player to enchant an item
 @router.post("/{player_id}/inventory/{item_id}/enchant", status_code=status.HTTP_201_CREATED, response_model=EnchantItemResponse)
 def enchant_item(player_id: str, item_id: int, request: EnchantRequest):
-    with db.engine.begin().execution_options(isolation_level="SERIALIZABLE") as connection:
-        # Check if player exists
-        check_player_exists(connection, player_id)
-            
-        inventory_row = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT pii.player_id, pii.item_id, i.name
-                FROM player_inventory_item pii
-                JOIN item i ON pii.item_id = i.item_id
-                WHERE pii.player_id = :player_id AND pii.item_id = :item_id
-                """
-            ),
-            {
-                "player_id": player_id,
-                "item_id": item_id
-            }
-        ).first()
+    with db.engine.connect().execution_options(isolation_level="SERIALIZABLE") as connection:
+        with connection.begin():
+            # Check if player exists
+            check_player_exists(connection, player_id)
+                
+            inventory_row = connection.execute(
+                sqlalchemy.text(
+                    """
+                    SELECT pii.player_id, pii.item_id, i.name
+                    FROM player_inventory_item pii
+                    JOIN item i ON pii.item_id = i.item_id
+                    WHERE pii.player_id = :player_id AND pii.item_id = :item_id
+                    """
+                ),
+                {
+                    "player_id": player_id,
+                    "item_id": item_id
+                }
+            ).first()
 
-        if not inventory_row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"Item with ID {item_id} not found in player {player_id}'s inventory"
+            if not inventory_row:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, 
+                    detail=f"Item with ID {item_id} not found in player {player_id}'s inventory"
+                )
+
+            enchant = connection.execute(
+                sqlalchemy.text(
+                    """
+                    SELECT enchantment_id, name
+                    FROM enchantment 
+                    WHERE enchantment_id = :enchantment_id
+                    """
+                ),
+                {"enchantment_id": request.enchantment_id}
+            ).first()
+
+            if not enchant:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, 
+                    detail=f"Enchantment with ID {request.enchantment_id} not found"
+                )
+
+            # Check if enchantment already exists
+            inventory_row = connection.execute(
+                sqlalchemy.text(
+                    """
+                    SELECT pii.player_inventory_item_id, i.name
+                    FROM player_inventory_item pii
+                    JOIN item i ON pii.item_id = i.item_id
+                    WHERE pii.player_id = :player_id AND pii.item_id = :item_id
+                    """
+                ),
+                {"player_id": player_id, "item_id": item_id}
+            ).first()
+
+            if not inventory_row:
+                raise HTTPException(status_code=404, detail="Item not found in inventory")
+
+            player_inventory_item_id = inventory_row.player_inventory_item_id
+            item_name = inventory_row.name
+
+            existing_enchant = connection.execute(
+                sqlalchemy.text(
+                    """
+                    SELECT 1 FROM item_enchantment
+                    WHERE player_inventory_item_id = :pii_id AND enchantment_id = :enchantment_id
+                    """
+                ),
+                {
+                    "pii_id": player_inventory_item_id,
+                    "enchantment_id": request.enchantment_id
+                }
+            ).first()
+
+            connection.execute(
+                sqlalchemy.text(
+                    """
+                    INSERT INTO item_enchantment (player_inventory_item_id, enchantment_id)
+                    VALUES (:pii_id, :enchantment_id)
+                    ON CONFLICT DO NOTHING
+                    """
+                ),
+                {
+                    "pii_id": player_inventory_item_id,
+                    "enchantment_id": request.enchantment_id
+                }
             )
-
-        enchant = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT enchantment_id, name
-                FROM enchantment 
-                WHERE enchantment_id = :enchantment_id
-                """
-            ),
-            {"enchantment_id": request.enchantment_id}
-        ).first()
-
-        if not enchant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"Enchantment with ID {request.enchantment_id} not found"
+            return EnchantItemResponse(
+                message=f"Successfully applied enchantment '{enchant.name}' to '{inventory_row.name}'",
+                item_id=item_id,
+                item_name=inventory_row.name,
+                enchantment_id=request.enchantment_id,
+                enchantment_name=enchant.name
             )
-
-        # Check if enchantment already exists
-        inventory_row = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT pii.player_inventory_item_id, i.name
-                FROM player_inventory_item pii
-                JOIN item i ON pii.item_id = i.item_id
-                WHERE pii.player_id = :player_id AND pii.item_id = :item_id
-                """
-            ),
-            {"player_id": player_id, "item_id": item_id}
-        ).first()
-
-        if not inventory_row:
-            raise HTTPException(status_code=404, detail="Item not found in inventory")
-
-        player_inventory_item_id = inventory_row.player_inventory_item_id
-        item_name = inventory_row.name
-
-        existing_enchant = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT 1 FROM item_enchantment
-                WHERE player_inventory_item_id = :pii_id AND enchantment_id = :enchantment_id
-                """
-            ),
-            {
-                "pii_id": player_inventory_item_id,
-                "enchantment_id": request.enchantment_id
-            }
-        ).first()
-
-        connection.execute(
-            sqlalchemy.text(
-                """
-                INSERT INTO item_enchantment (player_inventory_item_id, enchantment_id)
-                VALUES (:pii_id, :enchantment_id)
-                ON CONFLICT DO NOTHING
-                """
-            ),
-            {
-                "pii_id": player_inventory_item_id,
-                "enchantment_id": request.enchantment_id
-            }
-        )
-        return EnchantItemResponse(
-            message=f"Successfully applied enchantment '{enchant.name}' to '{inventory_row.name}'",
-            item_id=item_id,
-            item_name=inventory_row.name,
-            enchantment_id=request.enchantment_id,
-            enchantment_name=enchant.name
-        )
 
 # Allows for the creation of new players
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=CreatePlayerResponse)

@@ -56,6 +56,7 @@ def create_enchantment(enchantment: Enchantment):
                 """
                 INSERT INTO enchantment (name, effect_description, created_at)
                 VALUES (:name, :effect_description, CURRENT_TIMESTAMP)
+                ON CONFLICT (name) DO NOTHING
                 RETURNING enchantment_id
                 """
             ),
