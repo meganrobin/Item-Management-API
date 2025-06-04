@@ -7,7 +7,6 @@ API_BASE = "http://localhost:3000"
 API_KEY = "brat"
 
 def test_endpoint(endpoint: str, method: str = "GET", data: Optional[Dict] = None) -> Optional[float]:
-    """Test a single endpoint and return timing in milliseconds"""
     headers = {
         "access_token": API_KEY,
         "Content-Type": "application/json"
@@ -194,6 +193,7 @@ def print_performance_results(results: List[Dict]):
     
     sorted_results = sorted(results, key=lambda x: x['duration_ms'], reverse=True)
     
+    print()
     print("PERFORMANCE RESULTS")
 
     print()
