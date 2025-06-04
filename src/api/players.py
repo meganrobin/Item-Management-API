@@ -443,42 +443,42 @@ def create_player(request: CreatePlayerRequest):
 # Allows the player to delete an item's enchantment
 @router.delete("/{player_id}/inventory/{item_id}/enchantments", status_code=status.HTTP_200_OK, response_model=RemoveEnchantmentsResponse)
 def remove_enchantments(player_id: str, item_id: int):
-    """Remove enchantments from a specific item in the player's inventory, keeping the item."""
-    with db.engine.begin().execution_options(isolation_level="SERIALIZABLE") as connection:
-        check_player_exists(connection, player_id)
+    with db.engine.connect().execution_options(isolation_level="SERIALIZABLE") as connection:
+        with connection.begin():
+            check_player_exists(connection, player_id)
 
-        # Get player_inventory_item_id
-        inventory_row = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT player_inventory_item_id, item_id FROM player_inventory_item
-                WHERE player_id = :player_id AND item_id = :item_id
-                """
-            ),
-            {"player_id": player_id, "item_id": item_id}
-        ).first()
+            # Get player_inventory_item_id
+            inventory_row = connection.execute(
+                sqlalchemy.text(
+                    """
+                    SELECT player_inventory_item_id, item_id FROM player_inventory_item
+                    WHERE player_id = :player_id AND item_id = :item_id
+                    """
+                ),
+                {"player_id": player_id, "item_id": item_id}
+            ).first()
 
-        if not inventory_row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Item with ID {item_id} not found in player {player_id}'s inventory"
+            if not inventory_row:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Item with ID {item_id} not found in player {player_id}'s inventory"
+                )
+
+            pii_id = inventory_row.player_inventory_item_id
+
+            # Delete enchantment for this item
+            deleted = connection.execute(
+                sqlalchemy.text(
+                    """
+                    DELETE FROM item_enchantment
+                    WHERE player_inventory_item_id = :pii_id
+                    """
+                ),
+                {"pii_id": pii_id}
             )
 
-        pii_id = inventory_row.player_inventory_item_id
-
-        # Delete enchantment for this item
-        deleted = connection.execute(
-            sqlalchemy.text(
-                """
-                DELETE FROM item_enchantment
-                WHERE player_inventory_item_id = :pii_id
-                """
-            ),
-            {"pii_id": pii_id}
-        )
-
-        return RemoveEnchantmentsResponse(
-            message=f"Successfully removed enchantment from item ID {item_id} for player {player_id}.",
-            item_id=item_id,
-            player_id=player_id
-        )
+            return RemoveEnchantmentsResponse(
+                message=f"Successfully removed enchantment from item ID {item_id} for player {player_id}.",
+                item_id=item_id,
+                player_id=player_id
+            )

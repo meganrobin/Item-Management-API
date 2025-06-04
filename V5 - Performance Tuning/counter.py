@@ -23,7 +23,7 @@ def get_database_statistics():
         
         print(f"Generated enchantments: {enchanted_items_count}")
         
-        print(f"\n=== FINAL DATA STATISTICS ===")
+        print(f"\nFINAL DATA STATISTICS")
         print(f"Players: {player_count:,}")
         print(f"Items: {item_count:,}")
         print(f"Enchantments: {enchantment_count:,}")
