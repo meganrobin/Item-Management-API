@@ -443,7 +443,6 @@ def create_player(request: CreatePlayerRequest):
 # Allows the player to delete an item's enchantment
 @router.delete("/{player_id}/inventory/{item_id}/enchantments", status_code=status.HTTP_200_OK, response_model=RemoveEnchantmentsResponse)
 def remove_enchantments(player_id: str, item_id: int):
-    """Remove enchantments from a specific item in the player's inventory, keeping the item."""
     with db.engine.connect().execution_options(isolation_level="SERIALIZABLE") as connection:
         with connection.begin():
             check_player_exists(connection, player_id)
