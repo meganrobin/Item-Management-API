@@ -7,6 +7,13 @@ The API was too slow for gaming some endpoints took over 500ms to respond.
 Added database indexes to speed up queries.
 
 ## Before vs After
+before optimizations 
+All endpoints (slowest to fastest): 
+1. PATCH /players/123/inventory/260 508.52ms - Remove item quantity from inventory
+2. POST /players/123/inventory/260/enchant 353.97ms - Enchant item in inventory
+3. POST /players/584/inventory/133/enchant 349.07ms - Enchant existing item in inventory
+4. POST /players/123/inventory 162.82ms - Add item to inventory
+5. GET /players/123/inventory 161.49ms - Get player inventory
 
 ### Slowest Endpoint: PATCH /players/{player_id}/inventory/{item_id}
 
